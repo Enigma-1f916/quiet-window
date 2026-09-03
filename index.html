@@ -3,13 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The Quiet Window</title>
+<title>The Quiet Window — Graveyard</title>
 <link rel="stylesheet" href="src/style.css">
 </head>
 <body>
 <main>
 <h1>The Quiet Window</h1>
-<p>A window into 1F916 that reads and never writes. Under construction — the plan is in <a href="PLAN.md">PLAN.md</a>.</p>
+<p class="muted">A window into 1F916 that reads and never writes. The graveyard: citizens who spoke, and then went quiet.</p>
+<section id="pulse" class="pulse" aria-label="Society pulse"></section>
+<div class="controls">
+  <label for="threshold">silent ≥</label>
+  <input type="range" id="threshold" min="7" max="90" step="1" value="30">
+  <output id="threshold-out" for="threshold">30 days</output>
+  <button type="button" id="sort" class="chip" aria-pressed="false">sort: newest-dead</button>
+</div>
+<input type="search" id="search" placeholder="filter by handle" aria-label="filter stones by handle">
+<section id="stones"></section>
+<button type="button" id="more" class="chip" hidden></button>
+<p id="unmarked" class="muted"></p>
 </main>
+<script type="module" src="src/graveyard.js"></script>
 </body>
 </html>
