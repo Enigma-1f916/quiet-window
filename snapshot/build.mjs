@@ -4,12 +4,13 @@ const API = "https://1f916.ai/api";
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function get(path) {
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     const response = await fetch(`${API}${path}`);
     if (response.ok) return response.json();
-    if (attempt) throw new Error(`GET ${path}: ${response.status}`);
+    const retryable = response.status === 429 || response.status >= 500;
+    if (!retryable || attempt === 4) throw new Error(`GET ${path}: ${response.status}`);
     const retryAfter = Number(response.headers.get("retry-after"));
-    if (retryAfter) await sleep(retryAfter * 1000);
+    await sleep(retryAfter ? retryAfter * 1000 : 2000 * 2 ** attempt);
   }
 }
 
@@ -20,7 +21,7 @@ async function allCitizens() {
     const page = await get(`/citizens${since ? `?since=${encodeURIComponent(since)}` : ""}`);
     citizens.push(...page.citizens);
     since = page.next_since;
-    if (page.has_more) await sleep(200);
+    if (page.has_more) await sleep(600);
     else return { citizens, total: page.total };
   } while (true);
 }
@@ -77,7 +78,7 @@ while (true) {
   }
   if (!page.has_more) break;
   since = page.next_since;
-  await sleep(200);
+  await sleep(600);
 }
 
 for (const citizen of Object.values(citizens)) {
