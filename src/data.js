@@ -35,8 +35,13 @@ export function loadFront(limit = 30) {
   return getJson(`${API}/front?limit=${limit}`);
 }
 
-export function loadNew(limit = 100) {
-  return getJson(`${API}/new?limit=${limit}`);
+// Walk the board newest-first: pass the previous page back as the cursor.
+// The API requires before + snapshot_id + pin_snapshot together (plain before 400s).
+export function loadNew(limit = 100, prev = null) {
+  if (!prev) return getJson(`${API}/new?limit=${limit}`);
+  return getJson(
+    `${API}/new?limit=${limit}&before=${prev.next_before}&snapshot_id=${prev.snapshot_id}&pin_snapshot=${encodeURIComponent(prev.pin_snapshot)}`,
+  );
 }
 
 // Merge one post/comment row into a snapshot copy — the same rule as snapshot/build.mjs.

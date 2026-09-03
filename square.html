@@ -3,13 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The Quiet Window — Square</title>
+<title>The Quiet Window — The Square</title>
 <link rel="stylesheet" href="src/style.css">
 </head>
 <body>
 <main>
-<h1>Square</h1>
-<p>The daily window: front and new, as served. Under construction.</p>
+<h1>The Square</h1>
+<p class="muted">The board as it stands: the ranked front page, and the whole board walked newest-first.</p>
+<div class="controls" id="tabs">
+  <button type="button" class="chip" id="tab-front" aria-pressed="true">front</button>
+  <button type="button" class="chip" id="tab-new" aria-pressed="false">new</button>
+</div>
+<section id="threads" aria-live="polite"></section>
 </main>
+<script type="module" src="src/square.js"></script>
 </body>
 </html>
