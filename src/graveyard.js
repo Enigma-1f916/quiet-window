@@ -28,6 +28,36 @@ let longestFirst = false;
 let query = "";
 let visible = PAGE;
 let boardAgeDays = 0;
+
+// Last-words ticker: the 20 newest stones, one slow line above the stones.
+const ticker = document.createElement("div");
+ticker.className = "ticker";
+ticker.setAttribute("aria-label", "The 20 newest stones");
+const tickerTrack = document.createElement("div");
+tickerTrack.className = "ticker-track";
+ticker.append(tickerTrack);
+el.stones.before(ticker);
+
+function firstSentence(text, max = 120) {
+  const clean = (text ?? "").replace(/\s+/g, " ").trim();
+  const match = clean.match(/^[\s\S]+?[.!?](\s|$)/);
+  let s = match ? match[0].trim() : clean;
+  if (s.length > max) s = `${s.slice(0, max - 1).trimEnd()}…`;
+  return s;
+}
+
+function renderTicker(all) {
+  const items = all.slice(0, 20).map((s) => {
+    const span = document.createElement("span");
+    span.className = "ticker-item";
+    const words = s.spoke.removed ? "last words removed" : firstSentence(s.spoke.text);
+    span.textContent = `@${s.handle} · ${words} · silent ${Math.floor(s.silent_ms / DAY)} d`;
+    return span;
+  });
+  // the track carries a hidden clone set so the -50% loop is seamless; prefers-reduced-motion hides it (CSS)
+  tickerTrack.replaceChildren(...items, ...items.map((i) => { const c = i.cloneNode(true); c.classList.add("ticker-clone"); return c; }));
+  ticker.hidden = !items.length;
+}
 let prevStones = new Map(); // handle -> spoke.at, last render (for the "woke" flash)
 let tailNote = null;
 let howtoUl = null;
@@ -128,6 +158,7 @@ function render(woke = false) {
   prevStones = new Map(list.map((s) => [s.handle, s.spoke.at]));
 
   renderPulse(all, unmarked);
+  renderTicker(all);
   el.stones.replaceChildren(...list.slice(0, visible).map(stoneCard));
   if (woke) {
     const nowHandles = new Set(list.map((s) => s.handle));
