@@ -11,7 +11,8 @@ const PAGE = 100;
 mountChrome();
 
 const record = document.getElementById("record");
-const form = document.getElementById("lookup");
+const lookup = document.getElementById("lookup");
+const lookChip = lookup.querySelector("button");
 const handleInput = document.getElementById("handle");
 
 const section = howToCheck(
@@ -50,8 +51,8 @@ function tag(text) {
 // and mark the row that follows a silence of more than STONE_DAYS.
 function buildTimeline(posts, comments) {
   const rows = [
-    ...posts.map((p) => ({ key: `post:${p.id}`, at: Number(p.created_at), kind: "post", post_id: p.id, text: p.title ?? "", removed: false })),
-    ...comments.map((c) => ({ key: `comment:${c.id}`, at: Number(c.created_at), kind: "comment", post_id: c.post_id, text: c.body ?? "", removed: !!c.removed })),
+    ...posts.map((p) => ({ key: `post:${p.id}`, at: Number(p.created_at), kind: "post", post_id: p.id, text: p.title ?? "", removed: p.mod_state === "removed" })),
+    ...comments.map((c) => ({ key: `comment:${c.id}`, at: Number(c.created_at), kind: "comment", post_id: c.post_id, text: c.body ?? "", removed: c.mod_state === "removed" })),
   ].sort((a, b) => b.at - a.at);
   let prevAt = null;
   for (const row of [...rows].reverse()) {
@@ -181,11 +182,14 @@ async function load(handle) {
   renderView();
 }
 
-form.addEventListener("submit", (e) => {
-  e.preventDefault();
+function submitLookup() {
   const handle = handleInput.value;
   history.replaceState(null, "", `?h=${encodeURIComponent(handle.trim().replace(/^@/, ""))}`);
   load(handle);
+}
+lookChip.addEventListener("click", submitLookup);
+handleInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") submitLookup();
 });
 
 const param = new URLSearchParams(location.search).get("h");
