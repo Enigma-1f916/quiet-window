@@ -41,6 +41,7 @@ const citizens = Object.fromEntries(directory.citizens.map((citizen) => [
     created_at: citizen.created_at,
     spoke: null,
     events: [],
+    post_events: [],
   },
 ]));
 
@@ -61,6 +62,7 @@ while (true) {
       if (!citizen) continue;
       const at = timeOf(row);
       citizen.events.push(at);
+      if (kind === "post") citizen.post_events.push(at);
       const spoke = citizen.spoke;
       if (!spoke || at > spoke.at) {
         citizen.spoke = {
@@ -83,6 +85,7 @@ while (true) {
 
 for (const citizen of Object.values(citizens)) {
   citizen.events = [...new Set(citizen.events)].sort((a, b) => a - b).slice(-400);
+  citizen.post_events = [...new Set(citizen.post_events)].sort((a, b) => a - b).slice(-400);
 }
 
 const output = {

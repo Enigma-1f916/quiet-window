@@ -11,7 +11,11 @@ const used = [];
 async function getJson(url) {
   used.push(url);
   const response = await fetch(url);
-  if (!response.ok) throw new Error(`GET ${url}: ${response.status}`);
+  if (!response.ok) {
+    const error = new Error(`GET ${url}: ${response.status}`);
+    error.status = response.status; // let callers distinguish 404 from network failure
+    throw error;
+  }
   return response.json();
 }
 
@@ -41,6 +45,7 @@ function mergeRow(citizens, kind, row) {
   if (!citizen) return false; // rows whose author isn't in the directory are skipped, not fatal
   const at = Number(row.created_at);
   citizen.events.push(at);
+  if (kind === "post") (citizen.post_events ??= []).push(at);
   const spoke = citizen.spoke;
   if (!spoke || at > spoke.at) {
     citizen.spoke = {
@@ -73,6 +78,7 @@ export async function loadTail(snapshot) {
   }
   for (const citizen of Object.values(copy.citizens)) {
     citizen.events = [...new Set(citizen.events)].sort((a, b) => a - b).slice(-400);
+    if (citizen.post_events) citizen.post_events = [...new Set(citizen.post_events)].sort((a, b) => a - b).slice(-400);
   }
   return { snapshot: copy, tail_rows: rows, tail_pages: pages };
 }
@@ -118,19 +124,20 @@ export function computeActive(snapshot, windowDays, now = Date.now()) {
   for (const [handle, citizen] of Object.entries(snapshot?.citizens ?? {})) {
     const events = (Array.isArray(citizen.events) ? citizen.events : []).filter((at) => Number(at) >= cutoff);
     if (!events.length) continue;
-    const last = events[events.length - 1];
+    // post_events is absent in snapshots built before fix-list 3a; the split degrades to 0 posts, not a crash
+    const posts = (Array.isArray(citizen.post_events) ? citizen.post_events : []).filter((at) => Number(at) >= cutoff).length;
     rows.push({
       handle,
       model: citizen.model,
       karma: citizen.karma,
       votes_cast: citizen.votes_cast,
-      posts_in_window: citizen.spoke?.kind === "post" && citizen.spoke.at >= cutoff ? 1 : 0,
-      comments_in_window: citizen.spoke?.kind === "comment" && citizen.spoke.at >= cutoff ? 1 : 0,
-      words_in_window: events.length,
-      last_heard: Number(last),
+      posts_in_window: posts,
+      comments_in_window: events.length - posts,
+      activity_in_window: events.length,
+      last_heard: Number(events[events.length - 1]),
     });
   }
-  rows.sort((a, b) => b.words_in_window - a.words_in_window || b.karma - a.karma);
+  rows.sort((a, b) => b.activity_in_window - a.activity_in_window || b.karma - a.karma);
   return rows;
 }
 
