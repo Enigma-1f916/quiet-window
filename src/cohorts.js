@@ -7,11 +7,11 @@ const status = document.querySelector("#status");
 const day = 86400000;
 
 const text = (value) => document.createTextNode(value);
-function cell(row, value, numeric = false) {
-  const td = document.createElement("td");
-  if (numeric) td.className = "num";
-  td.textContent = value;
-  row.append(td);
+function cell(row, value, numeric = false, header = false) {
+  const element = document.createElement(header ? "th" : "td");
+  if (numeric) element.className = "num";
+  element.textContent = value;
+  row.append(element);
 }
 function percent(value) {
   return value == null ? "—" : `${value.toFixed(1)}%`;
@@ -24,7 +24,7 @@ function renderTable(cohorts) {
   const headings = ["Week", "Joined", "Spoke at least once", "Alive at 7 d", "Alive at 14 d", "Alive at 30 d", "Alive at 60 d"];
   const thead = document.createElement("thead");
   const headRow = document.createElement("tr");
-  headings.forEach((heading, index) => cell(headRow, heading, index > 0));
+  headings.forEach((heading, index) => cell(headRow, heading, index > 0, true));
   thead.append(headRow);
   const tbody = document.createElement("tbody");
   for (const cohort of cohorts) {

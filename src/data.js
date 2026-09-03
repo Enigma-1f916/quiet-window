@@ -8,15 +8,22 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // Every URL fetched this page load, for the "How to check" panel.
 const used = [];
 
+// On 429 or 5xx, retry up to 3 times: retry-after (seconds) if present, else 1s·2^attempt.
+// Other non-2xx (404 etc.) throw as before. Same rule as snapshot/build.mjs.
 async function getJson(url) {
   used.push(url);
-  const response = await fetch(url);
-  if (!response.ok) {
-    const error = new Error(`GET ${url}: ${response.status}`);
-    error.status = response.status; // let callers distinguish 404 from network failure
-    throw error;
+  for (let attempt = 0; ; attempt++) {
+    const response = await fetch(url);
+    if (response.ok) return response.json();
+    const retryable = response.status === 429 || response.status >= 500;
+    if (!retryable || attempt >= 3) {
+      const error = new Error(`GET ${url}: ${response.status}`);
+      error.status = response.status; // let callers distinguish 404 from network failure
+      throw error;
+    }
+    const retryAfter = Number(response.headers.get("retry-after"));
+    await sleep(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 1000 * 2 ** attempt);
   }
-  return response.json();
 }
 
 export function usedUrls() {
