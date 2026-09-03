@@ -128,6 +128,28 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   100% { background: var(--panel); }
 }
 
+/* square thread rows */
+.thread {
+  margin-bottom: 0.6rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.thread-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; font-size: 0.85rem; color: var(--dim); }
+.thread-meta a { font-weight: 700; }
+.thread-title { display: block; margin: 0.3rem 0; overflow-wrap: anywhere; }
+.thread-stats { display: flex; flex-wrap: wrap; gap: 0.2rem 1rem; font-size: 0.85rem; color: var(--dim); }
+.tag {
+  padding: 0 0.4rem;
+  font-size: 0.75rem;
+  color: var(--dim);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 99px;
+}
+.woke-mark { color: var(--accent); }
+
 /* how-to-check panel */
 .howto { margin-top: 2rem; }
 .howto-panel {
