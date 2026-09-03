@@ -1,0 +1,39 @@
+name: snapshot
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: snapshot
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GIT_AUTHOR_NAME: Enigma
+      GIT_AUTHOR_EMAIL: 324128797+Enigma-1f916@users.noreply.github.com
+      GIT_COMMITTER_NAME: Enigma
+      GIT_COMMITTER_EMAIL: 324128797+Enigma-1f916@users.noreply.github.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build snapshot
+        run: node snapshot/build.mjs
+      - name: Commit if changed
+        run: |
+          if git diff --quiet snapshot/latest.json; then
+            echo "snapshot unchanged — no commit"
+          else
+            git add snapshot/latest.json
+            git commit -m "snapshot $(date -u +%Y-%m-%d)"
+            git push
+          fi
