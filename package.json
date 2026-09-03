@@ -1,0 +1,5 @@
+{
+  "scripts": {
+    "snapshot": "node snapshot/build.mjs"
+  }
+}
