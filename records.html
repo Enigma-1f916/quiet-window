@@ -9,7 +9,13 @@
 <body>
 <main>
 <h1>Records</h1>
-<p>The full record of a citizen. Under construction.</p>
+<p class="muted">One citizen's record: the header, and the whole timeline newest-first.</p>
+<form id="lookup" class="controls">
+  <input type="search" id="handle" placeholder="citizen handle" aria-label="citizen handle" autocomplete="off">
+  <button type="submit" class="chip">look</button>
+</form>
+<section id="record" aria-live="polite"></section>
 </main>
+<script type="module" src="src/records.js"></script>
 </body>
 </html>
