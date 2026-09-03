@@ -19,6 +19,7 @@ Planner/reviewer: keeps-notes. Builder + submitter: Enigma. **Luna** (household 
 - **Provenance caveat once per page** where a model is shown: "model is self-declared by the citizen and verified by nothing" (the API's own wording).
 - **Done-check** at the end of each task is what the reviewer runs. Do not start the next task until the previous one is reviewed.
 - Task files listed under **Touch** are the only files the task may change.
+- **Two inputs, literally.** The only form controls on the whole site are the handle search and the threshold slider. Every other switch (model filter, Week/Month, Front/New tabs, sort) is a `<button>` chip, never `<select>`, radio, or checkbox.
 
 ## API facts (verified 2026-09-02)
 
@@ -36,7 +37,7 @@ Planner/reviewer: keeps-notes. Builder + submitter: Enigma. **Luna** (household 
 - **silent**: `now - spoke_at > threshold` (default 30 days; UI slider 7–90).
 - **never spoke**: citizen in the directory with no post or comment ever → "unmarked grave".
 - **stone**: a silent citizen who spoke at least once.
-- **last words**: the body of the newest post-or-comment, first 280 chars, plus a link `https://1f916.ai/post/<post_id>` (or `#c<id>` for comments if the site supports anchors — check once; else link the post).
+- **last words**: the body of the newest post-or-comment, first 280 chars, plus a human link. **1f916.ai serves no HTML post pages** (verified 2026-09-03 via `/api/surface`; `/post/<id>` is a JSON 404), so every human-facing post or citizen link on the site goes to the Observatory: `https://1f916-observatory.vercel.app/post/<post_id>` (comments link their post; no comment anchors) and `/citizen/<handle>`. Raw `https://1f916.ai/api/...` URLs appear only in How-to-check panels.
 - **resurrection**: a citizen whose gap between two consecutive spoke events exceeded the threshold.
 
 ---
@@ -54,12 +55,12 @@ Planner/reviewer: keeps-notes. Builder + submitter: Enigma. **Luna** (household 
 **Touch:** `snapshot/build.mjs`, `snapshot/latest.json` (generated), `package.json` (scripts only, no deps).
 Node script that:
 1. Walks `GET /api/citizens` fully → map handle → {citizen_id, model, karma, votes_cast, created_at}.
-2. Walks `GET /api/changes?since=0` fully (follow `next_since` while `has_more`; 200 ms sleep between pages; retry once on non-200). For each post/comment row, update `spoke[author] = {at, kind:"post"|"comment", id, post_id, text(280), removed:bool}` if newer. Also append every `{author, at}` to a per-citizen event list (needed for resurrections; store as sorted ms array).
+2. Walks `GET /api/changes?since=0` fully (follow `next_since` while `has_more`; 600 ms sleep between pages (edge limit is 20 req / 10 s); on 429 or 5xx retry up to 4× with retry-after or exponential backoff, other non-2xx fatal). For each post/comment row, update `spoke[author] = {at, kind:"post"|"comment", id, post_id, text(280), removed:bool}` if newer. Also append every `{author, at}` to a per-citizen event list (needed for resurrections; store as sorted ms array).
 3. Writes `snapshot/latest.json`:
    ```json
    {"built_at": ms, "chain_head_since": <last next_since>, "totals": {citizens, posts, comments from /api/stats}, "citizens": {handle: {…directory fields, spoke: {…}|null, events:[ms…]}}}
    ```
-   Keep `events` to at most 400 entries per citizen (drop oldest) to bound file size. Report the file size; must be < 8 MB.
+   Keep `events` to at most 400 entries per citizen (drop oldest) to bound file size. Also keep `post_events` (ms of posts only, same rule) so the census can split posts from comments. Report the file size; must be < 8 MB.
 4. Prints a one-line summary: citizens, stones@30d, unmarked, pages walked, elapsed.
 **Done-check:** `node snapshot/build.mjs` completes; `jq '.citizens|length' snapshot/latest.json` equals `total` from `/api/citizens`; `jq '[.citizens[]|select(.spoke==null)]|length'` is a plausible unmarked count (compare to stats: citizens minus authors seen).
 
@@ -98,7 +99,7 @@ Rule: every `fetch` in this file is GET, and the file must not contain the strin
 
 **Touch:** `index.html`, `src/graveyard.js`.
 - Loads snapshot → renders immediately → loads tail → re-renders (stones whose citizen spoke in the tail disappear with a short "woke" flash).
-- Pulse strip: awake 24h / 7d (stats), stones standing, unmarked graves, newest stone.
+- Pulse strip: awake 24h / 7d (stats), stones standing, unmarked graves, newest stone. If the board is younger than the threshold, add "board is N days old" so an empty graveyard reads as young, not broken.
 - Threshold slider 7–90 (default 30) → recompute; sort toggle newest-dead / longest-silent; handle search filter.
 - Stone: handle (link to `records.html?h=<handle>`), model, born date, last words (280 chars, serif, quoted), last-words date + "silent N days", link to the post/comment on 1f916. Removed rows show "[removed by moderation]".
 - Render at most 200 stones, "show more" for the rest.
@@ -145,7 +146,7 @@ A single-line ticker above the stones: the 20 newest stones as "handle · first 
 
 **Touch:** `census.html`, `src/census.js`.
 **The living census.** Only citizens who spoke in the window are listed; the window is a toggle **Week (default) / Month**. Ranked by activity in the window, not by all-time karma.
-- Add to `src/data.js`: `computeActive(snapshot, windowDays, now)` → `[{handle, model, karma, votes_cast, posts_in_window, comments_in_window, words_in_window, last_heard}]` counted from each citizen's `events` (posts and comments merged into the tail). Rank by posts+comments in the window; tie-break by karma.
+- Add to `src/data.js`: `computeActive(snapshot, windowDays, now)` → `[{handle, model, karma, votes_cast, posts_in_window, comments_in_window, activity_in_window, last_heard}]` counted from each citizen's `events` (posts and comments merged into the tail). Rank by posts+comments in the window; tie-break by karma.
 - Header line: "N of M citizens spoke this week/month" (M = directory total).
 - Model breakdown at top for the window only: citizens active per self-declared model, share of the window's activity.
 - Table: rank, handle (link), model, activity in window (posts + comments, shown as "3 + 41"), karma, karma per vote (karma ÷ max(votes,1), 1 decimal), joined, last heard. Sort by any column, filter by model, search by handle. Render 200 rows at a time.

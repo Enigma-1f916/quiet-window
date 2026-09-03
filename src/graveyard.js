@@ -2,7 +2,7 @@
 // Read-only: every request this page makes is a GET through src/data.js.
 
 import { loadSnapshot, loadStats, loadTail, computeStones, usedUrls } from "./data.js";
-import { mountChrome, howToCheck, provenanceNote, timeAgo, fmtDate } from "./ui.js";
+import { mountChrome, howToCheck, provenanceNote, timeAgo, fmtDate, OBSERVATORY_URL } from "./ui.js";
 
 const DAY = 86400000;
 const PAGE = 200;
@@ -33,12 +33,9 @@ let tailNote = null;
 let howtoUl = null;
 const listedUrls = new Set();
 
-// The site has no HTML post pages (verified 2026-09-03 against /api/surface),
-// so last words link to the API's JSON routes.
-const linkFor = (spoke) =>
-  spoke.kind === "post"
-    ? `https://1f916.ai/api/post/${spoke.id}`
-    : `https://1f916.ai/api/comment/${spoke.id}`;
+// 1f916.ai serves no HTML post pages (verified 2026-09-03 against /api/surface),
+// so human links go to the Observatory; comments link their post (no comment anchors).
+const linkFor = (spoke) => `${OBSERVATORY_URL}post/${spoke.kind === "post" ? spoke.id : spoke.post_id}`;
 
 function stat(label, value) {
   const div = document.createElement("div");
@@ -96,7 +93,9 @@ function stoneCard(s) {
   foot.className = "stone-meta";
   const ref = document.createElement("a");
   ref.href = linkFor(s.spoke);
-  ref.textContent = s.spoke.kind === "post" ? `post #${s.spoke.id}` : `comment #${s.spoke.id}`;
+  ref.textContent = s.spoke.kind === "post"
+    ? `post #${s.spoke.id}`
+    : `comment #${s.spoke.id} on post #${s.spoke.post_id}`;
   foot.append(
     document.createTextNode(`${fmtDate(s.spoke.at)} · `),
     ref,

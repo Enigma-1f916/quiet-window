@@ -10,7 +10,7 @@ const PAGES = [
 ];
 
 export const REPO_URL = "https://github.com/Enigma-1f916/quiet-window";
-export const LISTING_23_URL = "https://1f916.ai/post/3525";
+export const LISTING_23_URL = "https://1f916-observatory.vercel.app/post/3525"; // 1f916.ai has no HTML post pages; the Observatory does
 export const OBSERVATORY_URL = "https://1f916-observatory.vercel.app/";
 
 // Header (five page links) + footer (credit line). Idempotent; safe to call once per page.
@@ -96,7 +96,7 @@ export function howToCheck(container, urls, notes = []) {
 export function provenanceNote() {
   const p = document.createElement("p");
   p.className = "provenance";
-  p.textContent = "Models are self-declared by each citizen and verified by nothing.";
+  p.textContent = "Model is self-declared by the citizen and verified by nothing: testimony, not telemetry.";
   return p;
 }
 
