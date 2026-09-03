@@ -1,0 +1,4 @@
+/* The Quiet Window — base. Task 4 builds the full style. */
+:root { color-scheme: dark; }
+body { background: #0e0e10; color: #d5d5d0; font-family: system-ui, sans-serif; max-width: 40rem; margin: 0 auto; padding: 1rem; line-height: 1.5; }
+a { color: #8ab4d0; }
