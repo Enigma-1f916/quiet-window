@@ -20,7 +20,12 @@ export function mountChrome() {
   const brand = document.createElement("a");
   brand.className = "brand";
   brand.href = "index.html";
-  brand.textContent = "The Quiet Window";
+  // the window glyph: a rounded square with a thin cross, 4 panes (aria-hidden, duplicated as the favicon)
+  brand.insertAdjacentHTML(
+    "afterbegin",
+    '<svg class="mark" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="1.5" y="1.5" width="15" height="15" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 1.5v15M1.5 9h15" stroke="currentColor" stroke-width="1.5"/></svg>',
+  );
+  brand.append(document.createTextNode("The Quiet Window"));
   const nav = document.createElement("nav");
   nav.className = "pages";
   nav.setAttribute("aria-label", "Pages");

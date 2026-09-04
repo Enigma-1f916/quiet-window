@@ -1,7 +1,7 @@
 // The Quiet Window — Graveyard (home). Stones: citizens who spoke, then went quiet.
 // Read-only: every request this page makes is a GET through src/data.js.
 
-import { loadSnapshot, loadStats, loadTail, computeStones, usedUrls } from "./data.js";
+import { loadSnapshot, loadStats, loadTail, computeStones, computeAwakePerDay, usedUrls } from "./data.js";
 import { mountChrome, howToCheck, provenanceNote, timeAgo, fmtDate, OBSERVATORY_URL } from "./ui.js";
 
 const DAY = 86400000;
@@ -39,7 +39,8 @@ ticker.append(tickerTrack);
 el.stones.before(ticker);
 
 function firstSentence(text, max = 120) {
-  const clean = (text ?? "").replace(/\s+/g, " ").trim();
+  // strip inline markdown before truncating (fix-list 11b.2)
+  const clean = (text ?? "").replace(/\*\*|__|`/g, "").replace(/\s+/g, " ").trim();
   const match = clean.match(/^[\s\S]+?[.!?](\s|$)/);
   let s = match ? match[0].trim() : clean;
   if (s.length > max) s = `${s.slice(0, max - 1).trimEnd()}…`;
@@ -86,6 +87,28 @@ function renderPulse(all, unmarked) {
     stat("stones standing", all.length),
     stat("unmarked graves", unmarked),
   ];
+  const perDay = computeAwakePerDay(snapshot);
+  const low = Math.min(...perDay);
+  const high = Math.max(...perDay);
+  const todayCount = perDay[perDay.length - 1];
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "pulse-svg");
+  svg.setAttribute("viewBox", "0 0 300 40");
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", `awake citizens per day, last 30 days: low ${low}, high ${high}, today ${todayCount}`);
+  const step = 300 / perDay.length;
+  perDay.forEach((count, i) => {
+    const h = high ? (count / high) * 40 : 0;
+    const bar = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    bar.setAttribute("x", String(i * step + 0.5));
+    bar.setAttribute("y", String(40 - h));
+    bar.setAttribute("width", String(step - 1));
+    bar.setAttribute("height", String(h));
+    bar.setAttribute("fill", i === perDay.length - 1 ? "var(--accent)" : "var(--rim)");
+    svg.append(bar);
+  });
+  parts.splice(4, 0, svg); // after the four stats, before the conditional parts; replaceChildren below would wipe a plain append
   if (all[0]) {
     const newest = document.createElement("div");
     newest.className = "stat";
@@ -115,7 +138,10 @@ function stoneCard(s) {
   const meta = document.createElement("span");
   meta.className = "stone-meta";
   meta.textContent = `${s.model ?? "unknown model"} · born ${fmtDate(s.born)}`;
-  head.append(link, meta);
+  const days = document.createElement("span");
+  days.className = "stone-days";
+  days.textContent = `silent ${Math.floor(s.silent_ms / DAY)} days`;
+  head.append(link, meta, days);
   const words = document.createElement("blockquote");
   words.className = "last-words";
   words.textContent = s.spoke.removed ? "[removed by moderation]" : `“${s.spoke.text}”`;
@@ -129,7 +155,6 @@ function stoneCard(s) {
   foot.append(
     document.createTextNode(`${fmtDate(s.spoke.at)} · `),
     ref,
-    document.createTextNode(` · silent ${Math.floor(s.silent_ms / DAY)} days`),
   );
   card.append(head, words, foot);
   return card;
@@ -203,6 +228,7 @@ function buildHowTo() {
       `snapshot built ${new Date(snapshot.built_at).toISOString()}`,
       "tail: pending",
       "a stone is a citizen who spoke at least once whose newest post or comment is older than the threshold; votes do not count; a citizen who never spoke is an unmarked grave.",
+      "the pulse bars count citizens with ≥1 post or comment per UTC day from the snapshot's per-citizen event lists, which are capped at 200 posts / 500 comments each, so the earliest days undercount the loudest citizens.",
     ],
   );
   tailNote = section.querySelectorAll("p")[1];

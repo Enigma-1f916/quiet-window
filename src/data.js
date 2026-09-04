@@ -114,6 +114,25 @@ export function computeStones(snapshot, thresholdDays, now = Date.now()) {
   return { stones, unmarked };
 }
 
+// Awake per UTC day: for each of the last `days` days (oldest first), how many citizens
+// had at least one event on that day. Buckets by Math.floor(at / DAY); loops citizens once.
+export function computeAwakePerDay(snapshot, days = 30, now = Date.now()) {
+  const today = Math.floor(Number(now) / DAY);
+  const perDay = new Array(days).fill(0);
+  for (const [handle, citizen] of Object.entries(snapshot?.citizens ?? {})) {
+    const seen = new Set();
+    for (const at of Array.isArray(citizen.events) ? citizen.events : []) {
+      const day = Math.floor(Number(at) / DAY);
+      const age = today - day; // 0 = today
+      if (age >= 0 && age < days && !seen.has(day)) {
+        seen.add(day);
+        perDay[days - 1 - age]++; // oldest first
+      }
+    }
+  }
+  return perDay;
+}
+
 // Resurrections: gaps between consecutive spoke events that exceeded the threshold.
 export function computeResurrections(snapshot, thresholdDays) {
   const threshold = thresholdDays * DAY;
