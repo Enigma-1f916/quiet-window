@@ -67,7 +67,7 @@ function renderChart(cohorts) {
   const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
   line.setAttribute("points", points);
   line.setAttribute("fill", "none");
-  line.setAttribute("stroke", "#a3c2d6");
+  line.setAttribute("stroke", "var(--accent)");
   line.setAttribute("stroke-width", "3");
   svg.append(line);
   for (const [index, cohort] of values.entries()) {
@@ -77,7 +77,8 @@ function renderChart(cohorts) {
     point.setAttribute("cx", x);
     point.setAttribute("cy", y);
     point.setAttribute("r", "4");
-    point.setAttribute("fill", "#a3c2d6");
+    point.setAttribute("fill", "var(--accent)");
+    point.setAttribute("role", "img");
     point.setAttribute("aria-label", `${cohort.week}: ${percent(cohort.alive_30)}`);
     svg.append(point);
   }

@@ -109,7 +109,7 @@ Rule: every `fetch` in this file is GET, and the file must not contain the strin
 
 ## Task 5b — Square page (the daily-window view)
 
-**Touch:** `square.html`, `src/square.js`, `src/data.js` (add `loadFront()` → `GET /api/front?limit=30` and `loadNew()` → `GET /api/new`).
+**Touch:** `square.html`, `src/square.js`, `src/style.css` (thread rows), `src/data.js` (add `loadFront()` → `GET /api/front?limit=30` and `loadNew()` → `GET /api/new`; the `/api/new` cursor needs `before` + `snapshot_id` + `pin_snapshot` together).
 So the window can be someone's only window: a plain list, not a clone of the Observatory.
 - Two tabs: **Front** (ranked, as served) and **New**. Each row: title (link to `https://1f916.ai/post/<id>`), author (link to records), model, votes, comments, time ago. Pinned rows marked.
 - One extra column nobody else has: the author's status from the snapshot, "awake" or "silent N d" (a citizen posting while marked silent is a live resurrection; show it).
@@ -177,6 +177,72 @@ Handles stored in `localStorage` only. On the graveyard page: "your watched citi
 
 ---
 
+## Task 13 — Look: a quiet window should look like one (added 09-04, after the review pass; Tom approved)
+
+The site is clean but reads as a generic dark dev page. This task gives it a face without touching the data code. Same markup, same pages, same a11y score. Keeper's rulings: default threshold stays 30; GitHub Pages stays the host.
+
+**Touch:** `src/style.css`, the five `*.html` (head + header only), `src/graveyard.js` (renderPulse + stoneCard + firstSentence), `src/data.js` (one new pure function), new `fonts/` folder (two woff2 files).
+
+### 13a — Palette (style.css `:root` only)
+Warm the greys toward stone and ash; one accent, ember, for "awake"/links/woke. Replace the tokens exactly:
+```
+--bg: #0f0e0c;  --panel: #171512;  --panel-2: #201d19;  --line: #2c2823;
+--ink: #e2ddd3;  --dim: #9a938a;  --rim: #6e675e;  --accent: #d9a860;
+```
+Nothing else in the palette. Silent = ash (existing `--dim`/`--rim`), awake = ember. Do not add a second accent.
+
+### 13b — One display typeface, self-hosted
+**Fraunces** (SIL OFL) for the brand, `h1`/`h2`, stone handles, and last words. Body stays system sans, numbers stay mono. Self-host so the page still talks to no host but its own origin and 1f916.ai (that is condition 1's devtools check; a Google Fonts request would be a third host). Fetch the latin subsets once:
+```
+mkdir -p fonts
+UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
+curl -sA "$UA" "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..600;1,9..144,400..600&display=swap" \
+  | awk '/^\/\* latin \*\//{f=1;next} f && /url\(/{match($0,/url\(([^)]+)\)/,m); print m[1]; f=0}' > /tmp/fraunces-urls
+# verified 09-04: exactly two URLs (upright latin 82 KB, italic latin 67 KB), first is upright
+i=0; while read -r u; do i=$((i+1)); curl -so "fonts/fraunces-$i.woff2" "$u"; done < /tmp/fraunces-urls
+ls -la fonts   # two files, ~60–120 KB each
+```
+Add to the top of `style.css` (rename the files to `fraunces.woff2` / `fraunces-italic.woff2` first):
+```
+@font-face { font-family: "Fraunces"; src: url("../fonts/fraunces.woff2") format("woff2"); font-weight: 400 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "Fraunces"; src: url("../fonts/fraunces-italic.woff2") format("woff2"); font-weight: 400 600; font-style: italic; font-display: swap; }
+```
+Then `--serif: "Fraunces", "Iowan Old Style", Georgia, serif;` and apply: `.brand, h1, h2 { font-family: var(--serif); font-weight: 600; }`, `h1 { font-size: 1.7rem; letter-spacing: -0.01em; }`, `.stone-head a { font-family: var(--serif); font-size: 1.15rem; }`, `.last-words { font-style: italic; }`. Add the LICENSE line for the font to the README credits: "Fraunces by Undercase Type, SIL Open Font License".
+
+### 13c — Stone cards that read as stones (CSS + one span)
+- `stoneCard()`: wrap the "silent N d" text in `<span class="stone-days">` and move it to the end of `.stone-head`.
+- CSS: `.stone { border-top: 4px solid var(--rim); border-radius: 22px 22px 6px 6px; padding-top: 1rem; }`, `.stone-head { justify-content: space-between; }`, `.stone-days { font-family: var(--mono); font-size: 1.4rem; color: var(--dim); line-height: 1; }` (dim, not rim: rim on panel is 3.3:1, below AA for this size), `.stone-meta { font-size: 0.8rem; }`. Handle is the inscription (13b sizing), the silence count is the date on the stone, dim and large.
+- `firstSentence()`: strip inline markdown before truncating: `text.replace(/\*\*|__|`/g, "")`. (This is fix-list 11b item 2; it lives here now.)
+
+### 13d — The pulse strip breathes (SVG, no library)
+- `data.js`: `computeAwakePerDay(snapshot, days = 30, now = Date.now())` → array of `days` integers, oldest first: for each UTC day, the number of citizens with at least one `events` timestamp in that day. Pure function, loops citizens once, buckets by `Math.floor(at / DAY)`.
+- `graveyard.js` `renderPulse()`: after the four stats, append an inline `<svg class="pulse-svg" role="img" aria-label="awake citizens per day, last 30 days: low N, high M, today T">` of 30 `<rect>` bars, width 100% via `viewBox="0 0 300 40"` and `preserveAspectRatio="none"`, bar height proportional to the max, all bars `fill="var(--rim)"`, the newest bar `fill="var(--accent)"`. Height 40px, `margin: 0.5rem 0`. No axis, no labels, no tooltips; the aria-label carries the numbers.
+- How-to-check panel gains one line: "the pulse bars count citizens with ≥1 post or comment per UTC day from the snapshot's per-citizen event lists, which are capped at 200 posts / 500 comments each, so the earliest days undercount the loudest citizens."
+
+### 13e — A mark (inline SVG, doubles as the favicon)
+One glyph, a window: a rounded square with a thin cross, 4 panes. In each of the five html files, before the brand text inside `<a class="brand">`:
+```
+<svg class="mark" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="1.5" y="1.5" width="15" height="15" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 1.5v15M1.5 9h15" stroke="currentColor" stroke-width="1.5"/></svg>
+```
+CSS: `.brand { display: inline-flex; align-items: center; gap: 0.45rem; } .mark { color: var(--accent); }`. And in each `<head>`, the same glyph as the favicon (this closes fix-list 11b item 1, the only 404 on the site):
+```
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Crect x='1.5' y='1.5' width='15' height='15' rx='3' fill='none' stroke='%23d9a860' stroke-width='1.5'/%3E%3Cpath d='M9 1.5v15M1.5 9h15' stroke='%23d9a860' stroke-width='1.5'/%3E%3C/svg%3E">
+```
+
+### Leave alone
+No background textures or gradients, no new animations (the ticker and the woke flash are the only motion; `prefers-reduced-motion` still kills the ticker), no layout changes to Square/Cohorts/Records/Census beyond what the tokens and the heading font give them for free, no new inputs.
+
+**Done-check:** (1) Lighthouse accessibility still 100 on all five pages; (2) contrast (reviewer precomputed: accent/bg 8.9, dim/panel 6.0, ink/bg 14.3; rim is decorative only, never text); (3) devtools network tab on the home page shows requests to exactly two hosts, the page's own origin and 1f916.ai, and `/favicon.ico` no longer 404s; (4) `document.documentElement.scrollWidth === 390` at 390 px on all five pages; (5) the pulse aria-label's "today" number equals the number of distinct handles with an event today in `snapshot/latest.json` (reviewer recomputes it with node); (6) `firstSentence("**a** b `c`")` returns `a b c`; (7) `git status` shows exactly the touch list plus `fonts/`.
+
+### 13f — Leftovers (added 09-04 at Task 13 review; all four are one-liners)
+**Touch:** `README.md`, `PLAN.md`, `src/cohorts.js`. Nothing else.
+1. README credits: add "Fraunces by Undercase Type, SIL Open Font License, self-hosted in `fonts/`." (13b line the touch list forgot to permit; the reviewer's omission.)
+2. `PLAN.md` re-synced byte-identical to this file.
+3. `cohorts.js`: replace both `#a3c2d6` (old accent, now a second accent on the warm palette) with `var(--accent)`.
+4. `cohorts.js`: each `<circle aria-label=…>` gets `role="img"` (aria-label is prohibited on an element with no role; role img makes it valid and keeps the per-cohort numbers readable).
+
+**Done-check:** (1) Lighthouse a11y 100 on cohorts.html, zero failing audits; (2) `grep -c a3c2d6 src/` = 0; (3) `diff PLAN.md ../../household/1f916-window/window-plan.md` empty; (4) git status = exactly the three files.
+
 ## Review protocol
 
 For each task Enigma reports: files changed, the done-check output, and anything she deviated from. keeps-notes reviews the diff, runs the done-check, and replies pass / fix-list. A fix-list is a new mini-task, same rules. Tasks 5 and 7 are the ones most likely to need a second pass; budget for it.
@@ -188,4 +254,5 @@ For each task Enigma reports: files changed, the done-check output, and anything
 - 09-05: Tasks 5b, 6–8
 - 09-06: Task 9, then 10 only if ahead
 - 09-07: Task 11 + full review pass
+- 09-05/06: Task 13 (look), review same day — DONE 09-04, committed 92b9286; 13f leftovers next
 - 09-08: Task 12
